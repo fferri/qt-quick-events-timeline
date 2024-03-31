@@ -9,6 +9,8 @@ Rectangle {
     property int columns: 400
     property real rowHeight: 25
     property real columnWidth: 12.5
+    property bool debug: false
+    property DragArea activeDragArea: null
 
     implicitWidth: columns * columnWidth
     implicitHeight: rows * rowHeight
@@ -35,22 +37,15 @@ Rectangle {
     MouseArea {
         id: mouseArea
         anchors.fill: parent
+        cursorShape: activeDragArea ? activeDragArea.mouseArea.cursorShape : undefined
         preventStealing: true // otherwise the ScrollView steals the drag
-        cursorShape: dragTarget.activeDragArea ? dragTarget.activeDragArea.cursorShape : undefined
         onDoubleClicked: function(mouse) {
-            var props = {
-                row: Math.floor(mouse.y / root.rowHeight),
-                column: Math.floor(mouse.x / root.columnWidth),
-                rowSpan: 1,
-                columnSpan: 10,
-            }
-            eventComponent.createObject(root, props)
+            var row = Math.floor(mouse.y / root.rowHeight)
+            var column = Math.floor(mouse.x / root.columnWidth)
+            var rowSpan = 1
+            var columnSpan = 10
+            root.add(row, column, rowSpan, columnSpan)
         }
-    }
-
-    Item {
-        id: dragTarget
-        property DragArea activeDragArea: null
     }
 
     Component {
@@ -75,48 +70,75 @@ Rectangle {
 
             DragArea {
                 id: dragAreaStart
-                anchors.left: parent.left
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: Math.min(20, parent.width / 3)
-                drag.axis: Drag.XAxis
-                globalMouseArea: mouseArea
-                globalDragTarget: dragTarget
-                container: root
-                onDragged: function(origRow, origColumn, origRowSpan, origColumnSpan, deltaRow, deltaColumn) {
-                    eventItem.column = origColumn + deltaColumn
-                    eventItem.columnSpan = origColumnSpan - deltaColumn
+                z: 1
+                mouseArea.drag.axis: Drag.XAxis
+                eventsTimeline: root
+
+                function resetPos() {
+                    width = Math.min(20, eventItem.width / 3)
+                    height = eventItem.height
+                    x = eventItem.x
+                    y = eventItem.y
+                }
+
+                onDragEnd: eventItem.resetPos()
+                onXChanged: {
+                    var c = Math.round(x / root.columnWidth)
+                    var dc = c - eventItem.column
+                    eventItem.column += dc
+                    eventItem.columnSpan -= dc
                 }
             }
 
             DragArea {
                 id: dragAreaEnd
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                width: Math.min(20, parent.width / 3)
-                drag.axis: Drag.XAxis
-                globalMouseArea: mouseArea
-                globalDragTarget: dragTarget
-                container: root
-                onDragged: function(origRow, origColumn, origRowSpan, origColumnSpan, deltaRow, deltaColumn) {
-                    eventItem.columnSpan = origColumnSpan + deltaColumn
+                z: 1
+                mouseArea.drag.axis: Drag.XAxis
+                eventsTimeline: root
+
+                function resetPos() {
+                    width = Math.min(20, eventItem.width / 3)
+                    height = eventItem.height
+                    x = eventItem.x + eventItem.width - width
+                    y = eventItem.y
+                }
+
+                onDragEnd: eventItem.resetPos()
+                onXChanged: {
+                    var c = Math.round((x + width) / root.columnWidth)
+                    var cs = c - eventItem.column
+                    eventItem.columnSpan = cs
                 }
             }
 
             DragArea {
                 id: dragAreaMiddle
-                anchors.fill: parent
-                anchors.leftMargin: dragAreaStart.width
-                anchors.rightMargin: dragAreaEnd.width
-                drag.axis: Drag.XAndYAxis
-                globalMouseArea: mouseArea
-                globalDragTarget: dragTarget
-                container: root
-                onDragged: function(origRow, origColumn, origRowSpan, origColumnSpan, deltaRow, deltaColumn) {
-                    eventItem.column = origColumn + deltaColumn
-                    eventItem.row = origRow + deltaRow
+                mouseArea.drag.axis: Drag.XAndYAxis
+                eventsTimeline: root
+
+                function resetPos() {
+                    width = eventItem.width// - dragAreaStart.width - dragAreaEnd.width
+                    height = eventItem.height
+                    x = eventItem.x// + dragAreaStart.width
+                    y = eventItem.y
                 }
+
+                onDragEnd: eventItem.resetPos()
+                onXChanged: eventItem.column = Math.round(x / root.columnWidth)
+                onYChanged: eventItem.row = Math.round(y / root.rowHeight)
+            }
+
+            function resetPos() {
+                dragAreaStart.resetPos()
+                dragAreaEnd.resetPos()
+                dragAreaMiddle.resetPos()
+            }
+
+            Component.onCompleted: {
+                dragAreaStart.parent = eventItem.parent
+                dragAreaEnd.parent = eventItem.parent
+                dragAreaMiddle.parent = eventItem.parent
+                resetPos()
             }
         }
     }
