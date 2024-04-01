@@ -20,6 +20,8 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
+    property var selection: []
+
     property Component backgroundDelegate: Component {
         Rectangle {
             color: 'gray'
@@ -58,6 +60,53 @@ Item {
             var columnSpan = 10
             root.add(row, column, rowSpan, columnSpan)
         }
+        onPressed: function(mouse) {
+            selectionRectangle.a = selectionRectangle.b = Qt.point(mouse.x, mouse.y)
+            root.selection = []
+        }
+        onPositionChanged: function(mouse) {
+            if(pressed) {
+                selectionRectangle.b = Qt.point(mouse.x, mouse.y)
+                selectionRectangle.updateSelection()
+            }
+        }
+        onReleased: function(mouse) {
+            selectionRectangle.a = selectionRectangle.b
+        }
+    }
+
+    Rectangle {
+        id: selectionRectangle
+        color: Qt.rgba(0, 0.5, 1, 0.2)
+        border.color: Qt.rgba(0, 0.5, 1, 1)
+        border.width: 1
+        property point a
+        property point b
+        x: Math.min(a.x, b.x)
+        y: Math.min(a.y, b.y)
+        width: Math.abs(a.x - b.x)
+        height: Math.abs(a.y - b.y)
+        z: 2
+
+        function overlapsItem(item) {
+            if(x + width < item.x || item.x + item.width < x)
+                return false
+            if(y + height < item.y || item.y + item.height < y)
+                return false
+            return true
+        }
+
+        function updateSelection() {
+            var newSelection = []
+            for(var children of root.children) {
+                if(children.event === children && overlapsItem(children))
+                    newSelection.push(children)
+            }
+            newSelection.sort()
+
+            if(newSelection.length !== root.selection.length || !newSelection.every((element, index) => element === root.selection[index]))
+                root.selection = newSelection
+        }
     }
 
     Component {
@@ -65,14 +114,18 @@ Item {
 
         Item {
             id: eventItem
+            property var event: eventItem
             property int row
             property int column
             property int rowSpan
             property int columnSpan
+            readonly property bool selected: root.selection.includes(eventItem)
             x: column * root.columnWidth
             y: row * root.rowHeight
             width: columnSpan * columnWidth
             height: rowSpan * rowHeight
+
+            onSelectedChanged: if(eventDelegateLoader.item.selected !== undefined) eventDelegateLoader.item.selected = selected
 
             Loader {
                 id: eventDelegateLoader
@@ -171,6 +224,17 @@ Item {
                     function onYChanged() {
                         eventItem.row = Math.max(0, Math.min(root.rows - 1, Math.round(target.y / root.rowHeight)))
                     }
+
+                    function onClicked() {
+                        root.selection = [eventItem]
+                    }
+
+                    function onShiftClicked() {
+                        if(root.selection.includes(eventItem))
+                            root.selection = root.selection.filter(x => x !== eventItem)
+                        else
+                            root.selection = root.selection.concat([eventItem])
+                    }
                 }
 
                 onLoaded: resetPos()
@@ -199,6 +263,8 @@ Item {
 
             signal dragStart()
             signal dragEnd()
+            signal clicked()
+            signal shiftClicked()
 
             Rectangle {
                 anchors.fill: parent
@@ -213,6 +279,7 @@ Item {
                 anchors.fill: parent
                 drag.target: eventDragArea
                 drag.axis: eventDragArea.dragAxis
+                acceptedButtons: Qt.LeftButton
                 cursorShape: {
                     if(root.activeDragMouseArea && root.activeDragMouseArea !== eventDragAreaMouseArea)
                         return root.activeDragMouseArea.cursorShape
@@ -222,6 +289,12 @@ Item {
                         case Drag.YAxis: return Qt.SizeVerCursor
                         default: return Qt.ForbiddenCursor
                     }
+                }
+                onClicked: function(mouse) {
+                    if(mouse.modifiers & Qt.ShiftModifier)
+                        eventDragArea.shiftClicked()
+                    else
+                        eventDragArea.clicked()
                 }
             }
         }
