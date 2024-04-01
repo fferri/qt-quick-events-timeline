@@ -114,12 +114,14 @@ Item {
 
         Item {
             id: eventItem
+
             property var event: eventItem
             property int row
             property int column
             property int rowSpan
             property int columnSpan
             readonly property bool selected: root.selection.includes(eventItem)
+
             x: column * root.columnWidth
             y: row * root.rowHeight
             width: columnSpan * columnWidth
@@ -155,9 +157,11 @@ Item {
                     }
 
                     function onXChanged() {
-                        var c = Math.round(target.x / root.columnWidth)
-                        var dc = c - eventItem.column
-                        dc = Math.max(-eventItem.column, Math.min(root.columns - eventItem.column, eventItem.columnSpan - 1, dc))
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        var dcMin = Math.max(...sel.map(item => -item.column))
+                        var dcMax = Math.min(...sel.map(item => item.columnSpan - 1))
+                        var dc = Math.round(target.x / root.columnWidth) - eventItem.column
+                        dc = Math.max(dcMin, Math.min(dcMax, dc))
                         eventItem.column += dc
                         eventItem.columnSpan -= dc
                     }
@@ -188,9 +192,12 @@ Item {
                     }
 
                     function onXChanged() {
-                        var c = Math.round((target.x + target.width) / root.columnWidth)
-                        var cs = c - eventItem.column
-                        eventItem.columnSpan = Math.max(1, Math.min(root.columns - eventItem.column, cs))
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        var dcMin = Math.max(...sel.map(item => -item.columnSpan + 1))
+                        var dcMax = Math.min(...sel.map(item => root.columns - item.column - item.columnSpan))
+                        var dc = Math.round((target.x + target.width) / root.columnWidth) - eventItem.column - eventItem.columnSpan
+                        dc = Math.max(dcMin, Math.min(dcMax, dc))
+                        eventItem.columnSpan += dc
                     }
                 }
 
@@ -218,7 +225,12 @@ Item {
                     }
 
                     function onXChanged() {
-                        eventItem.column = Math.max(0, Math.min(root.columns - eventItem.columnSpan, Math.round(target.x / root.columnWidth)))
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        var dcMin = Math.max(...sel.map(item => -item.column))
+                        var dcMax = Math.min(...sel.map(item => root.columns - item.column - item.columnSpan))
+                        var dc = Math.round(target.x / root.columnWidth) - eventItem.column
+                        dc = Math.max(dcMin, Math.min(dcMax, dc))
+                        eventItem.column += dc
                     }
 
                     function onYChanged() {
