@@ -104,6 +104,7 @@ Item {
                     function onXChanged() {
                         var c = Math.round(target.x / root.columnWidth)
                         var dc = c - eventItem.column
+                        dc = Math.max(-eventItem.column, Math.min(root.columns - eventItem.column, eventItem.columnSpan - 1, dc))
                         eventItem.column += dc
                         eventItem.columnSpan -= dc
                     }
@@ -136,7 +137,7 @@ Item {
                     function onXChanged() {
                         var c = Math.round((target.x + target.width) / root.columnWidth)
                         var cs = c - eventItem.column
-                        eventItem.columnSpan = cs
+                        eventItem.columnSpan = Math.max(1, Math.min(root.columns - eventItem.column, cs))
                     }
                 }
 
@@ -164,11 +165,11 @@ Item {
                     }
 
                     function onXChanged() {
-                        eventItem.column = Math.round(target.x / root.columnWidth)
+                        eventItem.column = Math.max(0, Math.min(root.columns - eventItem.columnSpan, Math.round(target.x / root.columnWidth)))
                     }
 
                     function onYChanged() {
-                        eventItem.row = Math.round(target.y / root.rowHeight)
+                        eventItem.row = Math.max(0, Math.min(root.rows - 1, Math.round(target.y / root.rowHeight)))
                     }
                 }
 
