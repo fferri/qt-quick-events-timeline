@@ -145,7 +145,6 @@ Item {
                     item.height = eventItem.height
                     item.x = eventItem.x
                     item.y = eventItem.y
-                    item.z = 1
                     item.dragAxis = Drag.XAxis
                 }
 
@@ -180,7 +179,6 @@ Item {
                     item.height = eventItem.height
                     item.x = eventItem.x + eventItem.width - width
                     item.y = eventItem.y
-                    item.z = 1
                     item.dragAxis = Drag.XAxis
                 }
 
@@ -211,10 +209,12 @@ Item {
 
                 function resetPos() {
                     item.parent = eventItem.parent
-                    item.width = eventItem.width// - dragAreaStart.width - dragAreaEnd.width
+                    item.width = eventItem.width
                     item.height = eventItem.height
-                    item.x = eventItem.x// + dragAreaStart.width
+                    item.x = eventItem.x
                     item.y = eventItem.y
+                    item.leftMargin = Qt.binding(() => dragAreaStart.width)
+                    item.rightMargin = Qt.binding(() => dragAreaEnd.width)
                 }
 
                 Connections {
@@ -273,18 +273,13 @@ Item {
 
             property int dragAxis: Drag.XAndYAxis
 
+            property alias leftMargin: eventDragAreaMouseArea.anchors.leftMargin
+            property alias rightMargin: eventDragAreaMouseArea.anchors.rightMargin
+
             signal dragStart()
             signal dragEnd()
             signal clicked()
             signal shiftClicked()
-
-            Rectangle {
-                anchors.fill: parent
-                visible: root.debug
-                color: 'transparent'
-                border.width: 1
-                border.color: 'red'
-            }
 
             MouseArea {
                 id: eventDragAreaMouseArea
@@ -307,6 +302,14 @@ Item {
                         eventDragArea.shiftClicked()
                     else
                         eventDragArea.clicked()
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: root.debug
+                    color: eventDragAreaMouseArea.drag.active ? Qt.rgba(1, 0, 0, 0.2) : 'transparent'
+                    border.width: 1
+                    border.color: 'red'
                 }
             }
         }
