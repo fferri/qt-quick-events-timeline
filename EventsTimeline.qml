@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 
-Rectangle {
+Item {
     id: root
 
     property Component eventDelegate
@@ -20,7 +20,16 @@ Rectangle {
     width: implicitWidth
     height: implicitHeight
 
-    color: 'gray'
+    property Component backgroundDelegate: Component {
+        Rectangle {
+            color: 'gray'
+        }
+    }
+
+    Loader {
+        anchors.fill: parent
+        sourceComponent: backgroundDelegate
+    }
 
     Canvas {
         id: grid
