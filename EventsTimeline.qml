@@ -28,6 +28,8 @@ Item {
         }
     }
 
+    property int defaultNewEventColumnSpan: 4
+
     Loader {
         anchors.fill: parent
         sourceComponent: backgroundDelegate
@@ -57,7 +59,7 @@ Item {
             var row = Math.floor(mouse.y / root.rowHeight)
             var column = Math.floor(mouse.x / root.columnWidth)
             var rowSpan = 1
-            var columnSpan = 10
+            var columnSpan = defaultNewEventColumnSpan
             root.add(row, column, rowSpan, columnSpan)
         }
         onPressed: function(mouse) {
@@ -152,7 +154,9 @@ Item {
                     target: dragAreaStart.item
 
                     function onDragEnd() {
-                        eventItem.resetPos()
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        for(var item of sel)
+                            item.resetPos()
                     }
 
                     function onXChanged() {
@@ -161,8 +165,10 @@ Item {
                         var dcMax = Math.min(...sel.map(item => item.columnSpan - 1))
                         var dc = Math.round(target.x / root.columnWidth) - eventItem.column
                         dc = Math.max(dcMin, Math.min(dcMax, dc))
-                        eventItem.column += dc
-                        eventItem.columnSpan -= dc
+                        for(var item of sel) {
+                            item.column += dc
+                            item.columnSpan -= dc
+                        }
                     }
                 }
 
@@ -186,7 +192,9 @@ Item {
                     target: dragAreaEnd.item
 
                     function onDragEnd() {
-                        eventItem.resetPos()
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        for(var item of sel)
+                            item.resetPos()
                     }
 
                     function onXChanged() {
@@ -195,7 +203,9 @@ Item {
                         var dcMax = Math.min(...sel.map(item => root.columns - item.column - item.columnSpan))
                         var dc = Math.round((target.x + target.width) / root.columnWidth) - eventItem.column - eventItem.columnSpan
                         dc = Math.max(dcMin, Math.min(dcMax, dc))
-                        eventItem.columnSpan += dc
+                        for(var item of sel)
+                            item.columnSpan += dc
+                        root.defaultNewEventColumnSpan = eventItem.columnSpan
                     }
                 }
 
@@ -221,7 +231,9 @@ Item {
                     target: dragAreaMiddle.item
 
                     function onDragEnd() {
-                        eventItem.resetPos()
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        for(var item of sel)
+                            item.resetPos()
                     }
 
                     function onXChanged() {
@@ -230,11 +242,18 @@ Item {
                         var dcMax = Math.min(...sel.map(item => root.columns - item.column - item.columnSpan))
                         var dc = Math.round(target.x / root.columnWidth) - eventItem.column
                         dc = Math.max(dcMin, Math.min(dcMax, dc))
-                        eventItem.column += dc
+                        for(var item of sel)
+                            item.column += dc
                     }
 
                     function onYChanged() {
-                        eventItem.row = Math.max(0, Math.min(root.rows - 1, Math.round(target.y / root.rowHeight)))
+                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
+                        var drMin = Math.max(...sel.map(item => -item.row))
+                        var drMax = Math.min(...sel.map(item => root.rows - item.row - item.rowSpan))
+                        var dr = Math.round(target.y / root.rowHeight) - eventItem.row
+                        dr = Math.max(drMin, Math.min(drMax, dr))
+                        for(var item of sel)
+                            item.row += dr
                     }
 
                     function onClicked() {
