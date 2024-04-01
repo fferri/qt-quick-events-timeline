@@ -17,7 +17,6 @@ qt_add_qml_module(appqt-quick-events-timeline
     VERSION 1.0
     QML_FILES Main.qml
     QML_FILES EventsTimeline.qml
-    QML_FILES DragArea.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

@@ -10,7 +10,10 @@ Rectangle {
     property real rowHeight: 25
     property real columnWidth: 12.5
     property bool debug: false
-    property DragArea activeDragArea: null
+
+    // XXX: to avoid cursorShape flicker when dragging an mouse can go beyond the edge
+    //      of the currently active mouseArea"
+    property MouseArea activeDragMouseArea: null
 
     implicitWidth: columns * columnWidth
     implicitHeight: rows * rowHeight
@@ -37,7 +40,7 @@ Rectangle {
     MouseArea {
         id: mouseArea
         anchors.fill: parent
-        cursorShape: activeDragArea ? activeDragArea.mouseArea.cursorShape : undefined
+        cursorShape: activeDragMouseArea?.cursorShape
         preventStealing: true // otherwise the ScrollView steals the drag
         onDoubleClicked: function(mouse) {
             var row = Math.floor(mouse.y / root.rowHeight)
@@ -68,64 +71,99 @@ Rectangle {
                 sourceComponent: eventDelegate
             }
 
-            DragArea {
+            Loader {
                 id: dragAreaStart
-                z: 1
-                mouseArea.drag.axis: Drag.XAxis
-                eventsTimeline: root
+                sourceComponent: eventDragAreaComponent
 
                 function resetPos() {
-                    width = Math.min(20, eventItem.width / 3)
-                    height = eventItem.height
-                    x = eventItem.x
-                    y = eventItem.y
+                    item.parent = eventItem.parent
+                    item.width = Math.min(20, eventItem.width / 3)
+                    item.height = eventItem.height
+                    item.x = eventItem.x
+                    item.y = eventItem.y
+                    item.z = 1
+                    item.dragAxis = Drag.XAxis
                 }
 
-                onDragEnd: eventItem.resetPos()
-                onXChanged: {
-                    var c = Math.round(x / root.columnWidth)
-                    var dc = c - eventItem.column
-                    eventItem.column += dc
-                    eventItem.columnSpan -= dc
+                Connections {
+                    target: dragAreaStart.item
+
+                    function onDragEnd() {
+                        eventItem.resetPos()
+                    }
+
+                    function onXChanged() {
+                        var c = Math.round(target.x / root.columnWidth)
+                        var dc = c - eventItem.column
+                        eventItem.column += dc
+                        eventItem.columnSpan -= dc
+                    }
                 }
+
+                onLoaded: resetPos()
             }
 
-            DragArea {
+            Loader {
                 id: dragAreaEnd
-                z: 1
-                mouseArea.drag.axis: Drag.XAxis
-                eventsTimeline: root
+                sourceComponent: eventDragAreaComponent
 
                 function resetPos() {
-                    width = Math.min(20, eventItem.width / 3)
-                    height = eventItem.height
-                    x = eventItem.x + eventItem.width - width
-                    y = eventItem.y
+                    item.parent = eventItem.parent
+                    item.width = Math.min(20, eventItem.width / 3)
+                    item.height = eventItem.height
+                    item.x = eventItem.x + eventItem.width - width
+                    item.y = eventItem.y
+                    item.z = 1
+                    item.dragAxis = Drag.XAxis
                 }
 
-                onDragEnd: eventItem.resetPos()
-                onXChanged: {
-                    var c = Math.round((x + width) / root.columnWidth)
-                    var cs = c - eventItem.column
-                    eventItem.columnSpan = cs
+                Connections {
+                    target: dragAreaEnd.item
+
+                    function onDragEnd() {
+                        eventItem.resetPos()
+                    }
+
+                    function onXChanged() {
+                        var c = Math.round((target.x + target.width) / root.columnWidth)
+                        var cs = c - eventItem.column
+                        eventItem.columnSpan = cs
+                    }
                 }
+
+                onLoaded: resetPos()
             }
 
-            DragArea {
+            Loader {
                 id: dragAreaMiddle
-                mouseArea.drag.axis: Drag.XAndYAxis
-                eventsTimeline: root
+                sourceComponent: eventDragAreaComponent
+                property int dragAxis: Drag.XAndYAxis
 
                 function resetPos() {
-                    width = eventItem.width// - dragAreaStart.width - dragAreaEnd.width
-                    height = eventItem.height
-                    x = eventItem.x// + dragAreaStart.width
-                    y = eventItem.y
+                    item.parent = eventItem.parent
+                    item.width = eventItem.width// - dragAreaStart.width - dragAreaEnd.width
+                    item.height = eventItem.height
+                    item.x = eventItem.x// + dragAreaStart.width
+                    item.y = eventItem.y
                 }
 
-                onDragEnd: eventItem.resetPos()
-                onXChanged: eventItem.column = Math.round(x / root.columnWidth)
-                onYChanged: eventItem.row = Math.round(y / root.rowHeight)
+                Connections {
+                    target: dragAreaMiddle.item
+
+                    function onDragEnd() {
+                        eventItem.resetPos()
+                    }
+
+                    function onXChanged() {
+                        eventItem.column = Math.round(target.x / root.columnWidth)
+                    }
+
+                    function onYChanged() {
+                        eventItem.row = Math.round(target.y / root.rowHeight)
+                    }
+                }
+
+                onLoaded: resetPos()
             }
 
             function resetPos() {
@@ -133,12 +171,48 @@ Rectangle {
                 dragAreaEnd.resetPos()
                 dragAreaMiddle.resetPos()
             }
+        }
+    }
 
-            Component.onCompleted: {
-                dragAreaStart.parent = eventItem.parent
-                dragAreaEnd.parent = eventItem.parent
-                dragAreaMiddle.parent = eventItem.parent
-                resetPos()
+    Component {
+        id: eventDragAreaComponent
+
+        Item {
+            id: eventDragArea
+
+            Drag.active: eventDragAreaMouseArea.drag.active
+            Drag.onActiveChanged: if(Drag.active) dragStart(); else dragEnd()
+            onDragStart: root.activeDragMouseArea = eventDragAreaMouseArea
+            onDragEnd: root.activeDragMouseArea = null
+
+            property int dragAxis: Drag.XAndYAxis
+
+            signal dragStart()
+            signal dragEnd()
+
+            Rectangle {
+                anchors.fill: parent
+                visible: root.debug
+                color: 'transparent'
+                border.width: 1
+                border.color: 'red'
+            }
+
+            MouseArea {
+                id: eventDragAreaMouseArea
+                anchors.fill: parent
+                drag.target: eventDragArea
+                drag.axis: eventDragArea.dragAxis
+                cursorShape: {
+                    if(root.activeDragMouseArea && root.activeDragMouseArea !== eventDragAreaMouseArea)
+                        return root.activeDragMouseArea.cursorShape
+                    switch(drag.axis) {
+                        case Drag.XAndYAxis: return Qt.SizeAllCursor
+                        case Drag.XAxis: return Qt.SizeHorCursor
+                        case Drag.YAxis: return Qt.SizeVerCursor
+                        default: return Qt.ForbiddenCursor
+                    }
+                }
             }
         }
     }
