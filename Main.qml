@@ -7,6 +7,47 @@ ApplicationWindow {
     visible: true
     title: qsTr("Events Timeline")
 
+    Component {
+        id: horizontalGrid
+
+        Item {
+            id: horizontalGridItem
+
+            Repeater {
+                model: [1, 4, 16]
+
+                GridLines {
+                    anchors.fill: horizontalGridItem
+                    cells: timeline.columns
+                    cellSize: timeline.columnWidth
+                    division: modelData
+                    color: Qt.rgba(0, 0, 0, modelData / 16)
+                }
+            }
+        }
+    }
+
+    Component {
+        id: verticalGrid
+
+        Item {
+            id: verticalGridItem
+
+            Repeater {
+                model: [1, 10]
+
+                GridLines {
+                    anchors.fill: verticalGridItem
+                    orientation: Qt.Vertical
+                    cells: timeline.rows
+                    cellSize: timeline.rowHeight
+                    division: modelData
+                    color: Qt.rgba(0, 0, 0, modelData / 10 / 4)
+                }
+            }
+        }
+    }
+
     SplitView {
         id: splitView
         anchors.fill: parent
@@ -26,18 +67,10 @@ ApplicationWindow {
                 ScrollBar.vertical.policy: ScrollBar.AlwaysOff
                 ScrollBar.vertical.position: timelineScrollView.ScrollBar.vertical.position
 
-                Repeater {
-                    model: [1, 10]
-
-                    GridLines {
-                        width: verticalHeader.width
-                        height: timeline.height
-                        orientation: Qt.Vertical
-                        cells: timeline.rows
-                        cellSize: timeline.rowHeight
-                        division: modelData
-                        color: Qt.rgba(0, 0, 0, modelData / 10)
-                    }
+                Loader {
+                    sourceComponent: verticalGrid
+                    width: verticalHeader.width
+                    height: timeline.height
                 }
 
                 Column {
@@ -68,17 +101,10 @@ ApplicationWindow {
                 ScrollBar.vertical.policy: ScrollBar.AlwaysOff
                 ScrollBar.horizontal.position: timelineScrollView.ScrollBar.horizontal.position
 
-                Repeater {
-                    model: [1, 4, 16]
-
-                    GridLines {
-                        width: timeline.width
-                        height: horizontalHeader.height
-                        cells: timeline.columns
-                        cellSize: timeline.columnWidth
-                        division: modelData
-                        color: Qt.rgba(0, 0, 0, modelData / 16)
-                    }
+                Loader {
+                    sourceComponent: horizontalGrid
+                    width: timeline.width
+                    height: horizontalHeader.height
                 }
             }
 
@@ -95,31 +121,14 @@ ApplicationWindow {
                         id: background
                         color: 'gray'
 
-                        Repeater {
-                            model: [1, 4, 16]
-
-                            GridLines {
-                                id: horizontalGrid
-                                anchors.fill: background
-                                cells: timeline.columns
-                                cellSize: timeline.columnWidth
-                                division: modelData
-                                color: Qt.rgba(0, 0, 0, modelData / 16)
-                            }
+                        Loader {
+                            sourceComponent: horizontalGrid
+                            anchors.fill: background
                         }
 
-                        Repeater {
-                            model: [1, 10]
-
-                            GridLines {
-                                id: verticalGrid
-                                orientation: Qt.Vertical
-                                anchors.fill: background
-                                cells: timeline.rows
-                                cellSize: timeline.rowHeight
-                                division: modelData
-                                color: Qt.rgba(0, 0, 0, modelData / 10)
-                            }
+                        Loader {
+                            sourceComponent: verticalGrid
+                            anchors.fill: background
                         }
                     }
                     eventDelegate: Rectangle {
