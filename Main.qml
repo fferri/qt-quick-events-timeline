@@ -86,6 +86,18 @@ ApplicationWindow {
                     }
                 }
             }
+
+            MouseArea {
+                anchors.fill: verticalHeader
+                property point lastMousePos
+                onPressed: mouse => lastMousePos = Qt.point(mouse.x, mouse.y)
+                onPositionChanged: function(mouse) {
+                    var mousePos = Qt.point(mouse.x, mouse.y)
+                    var mouseDelta = Qt.point(mousePos.x - lastMousePos.x, mousePos.y - lastMousePos.y)
+                    lastMousePos = mousePos
+                    timeline.zoomVertical(mouseDelta, timelineScrollView)
+                }
+            }
         }
 
         Item {
@@ -105,6 +117,18 @@ ApplicationWindow {
                     sourceComponent: horizontalGrid
                     width: timeline.width
                     height: horizontalHeader.height
+                }
+            }
+
+            MouseArea {
+                anchors.fill: horizontalHeader
+                property point lastMousePos
+                onPressed: mouse => lastMousePos = Qt.point(mouse.x, mouse.y)
+                onPositionChanged: function(mouse) {
+                    var mousePos = Qt.point(mouse.x, mouse.y)
+                    var mouseDelta = Qt.point(mousePos.x - lastMousePos.x, mousePos.y - lastMousePos.y)
+                    lastMousePos = mousePos
+                    timeline.zoomHorizontal(mouseDelta, timelineScrollView)
                 }
             }
 

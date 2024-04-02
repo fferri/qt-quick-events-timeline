@@ -334,4 +334,26 @@ Item {
         events.sort()
         return events
     }
+
+    function zoomHorizontal(mouseDelta: point, timelineScrollView: ScrollView) {
+        var sb = timelineScrollView.ScrollBar.horizontal
+        var newColumnWidth = root.columnWidth * Math.pow(2, mouseDelta.y / 200)
+        var posDispl = (sb.position + sb.size / 2) * (newColumnWidth / root.columnWidth - 1)
+        var hscroll = -mouseDelta.x / root.width
+        root.columnWidth = newColumnWidth
+
+        const minPos = 0, maxPos = 1 - timelineScrollView.ScrollBar.horizontal.size
+        sb.position = Math.max(minPos, Math.min(maxPos, sb.position + posDispl + hscroll))
+    }
+
+    function zoomVertical(mouseDelta: point, timelineScrollView: ScrollView) {
+        var sb = timelineScrollView.ScrollBar.vertical
+        var newRowHeight = root.rowHeight * Math.pow(2, mouseDelta.x / 200)
+        var posDispl = (sb.position + sb.size / 2) * (newRowHeight / root.rowHeight - 1)
+        var vscroll = -mouseDelta.y / root.height
+        root.rowHeight = newRowHeight
+
+        const minPos = 0, maxPos = 1 - timelineScrollView.ScrollBar.vertical.size
+        sb.position = Math.max(minPos, Math.min(maxPos, sb.position + posDispl + vscroll))
+    }
 }
