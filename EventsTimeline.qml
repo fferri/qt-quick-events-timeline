@@ -67,10 +67,11 @@ Item {
             root.selection = []
         }
         onPositionChanged: function(mouse) {
-            if(pressed) {
-                selectionRectangle.b = Qt.point(mouse.x, mouse.y)
-                selectionRectangle.updateSelection()
-            }
+            if(!pressed) return
+            selectionRectangle.b = Qt.point(mouse.x, mouse.y)
+            var newSelection = root.getEventsInRect(selectionRectangle)
+            if(newSelection.length !== root.selection.length || !newSelection.every((element, index) => element === root.selection[index]))
+                root.selection = newSelection
         }
         onReleased: function(mouse) {
             selectionRectangle.a = selectionRectangle.b
@@ -89,26 +90,6 @@ Item {
         width: Math.abs(a.x - b.x)
         height: Math.abs(a.y - b.y)
         z: 2
-
-        function overlapsItem(item) {
-            if(x + width < item.x || item.x + item.width < x)
-                return false
-            if(y + height < item.y || item.y + item.height < y)
-                return false
-            return true
-        }
-
-        function updateSelection() {
-            var newSelection = []
-            for(var children of root.children) {
-                if(children.event === children && overlapsItem(children))
-                    newSelection.push(children)
-            }
-            newSelection.sort()
-
-            if(newSelection.length !== root.selection.length || !newSelection.every((element, index) => element === root.selection[index]))
-                root.selection = newSelection
-        }
     }
 
     Component {
@@ -336,5 +317,21 @@ Item {
 
     function add(row, column, rowSpan, columnSpan) {
         return eventComponent.createObject(root, {row, column, rowSpan, columnSpan})
+    }
+
+    function getEventsInRect(rect) {
+        var events = []
+        for(var children of root.children) {
+            if(children.event !== children) continue // not an 'event' Item
+            if(!(
+                    rect.x + rect.width < children.x ||
+                    children.x + children.width < rect.x ||
+                    rect.y + rect.height < children.y ||
+                    children.y + children.height < rect.y
+            ))
+                events.push(children)
+        }
+        events.sort()
+        return events
     }
 }
