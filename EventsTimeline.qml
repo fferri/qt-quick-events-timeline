@@ -35,21 +35,6 @@ Item {
         sourceComponent: backgroundDelegate
     }
 
-    Canvas {
-        id: grid
-        anchors.fill: parent
-        opacity: 0.1
-        onPaint: {
-            var ctx = getContext('2d')
-            ctx.strokeStyle = Qt.rgba(0, 0, 0, 0.3)
-            for(var rowY = 0; rowY <= height; rowY += rowHeight) {
-                ctx.moveTo(0, rowY)
-                ctx.lineTo(width, rowY)
-            }
-            ctx.stroke()
-        }
-    }
-
     MouseArea {
         id: mouseArea
         anchors.fill: parent
