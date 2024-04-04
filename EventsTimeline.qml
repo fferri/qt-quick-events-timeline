@@ -107,25 +107,13 @@ Item {
                 id: dragAreaStart
                 sourceComponent: eventDragAreaComponent
 
-                function resetPos() {
-                    item.parent = eventItem.parent
-                    item.width = Math.min(20, eventItem.width / 3)
-                    item.height = eventItem.height
-                    item.x = eventItem.x
-                    item.y = eventItem.y
-                    item.dragAxis = Drag.XAxis
-                }
-
                 Connections {
                     target: dragAreaStart.item
 
-                    function onDragEnd() {
-                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
-                        for(var item of sel)
-                            item.resetPos()
-                    }
-
                     function onXChanged() {
+                        // just before dragActive becomes false, X/Y position is already changed to 0!
+                        if(!dragAreaStart.item.dragActive) return
+
                         var sel = root.selection.length > 0 ? root.selection : [eventItem]
                         var dcMin = Math.max(...sel.map(item => -item.column))
                         var dcMax = Math.min(...sel.map(item => item.columnSpan - 1))
@@ -138,32 +126,24 @@ Item {
                     }
                 }
 
-                onLoaded: resetPos()
+                onLoaded: {
+                    item.dragAxis = Drag.XAxis
+                    item.theItem = eventItem
+                    item.alignLeft = true
+                }
             }
 
             Loader {
                 id: dragAreaEnd
                 sourceComponent: eventDragAreaComponent
 
-                function resetPos() {
-                    item.parent = eventItem.parent
-                    item.width = Math.min(20, eventItem.width / 3)
-                    item.height = eventItem.height
-                    item.x = eventItem.x + eventItem.width - width
-                    item.y = eventItem.y
-                    item.dragAxis = Drag.XAxis
-                }
-
                 Connections {
                     target: dragAreaEnd.item
 
-                    function onDragEnd() {
-                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
-                        for(var item of sel)
-                            item.resetPos()
-                    }
-
                     function onXChanged() {
+                        // just before dragActive becomes false, X/Y position is already changed to 0!
+                        if(!dragAreaEnd.item.dragActive) return
+
                         var sel = root.selection.length > 0 ? root.selection : [eventItem]
                         var dcMin = Math.max(...sel.map(item => -item.columnSpan + 1))
                         var dcMax = Math.min(...sel.map(item => root.columns - item.column - item.columnSpan))
@@ -175,34 +155,24 @@ Item {
                     }
                 }
 
-                onLoaded: resetPos()
+                onLoaded: {
+                    item.dragAxis = Drag.XAxis
+                    item.theItem = eventItem
+                    item.alignRight = true
+                }
             }
 
             Loader {
                 id: dragAreaMiddle
                 sourceComponent: eventDragAreaComponent
-                property int dragAxis: Drag.XAndYAxis
-
-                function resetPos() {
-                    item.parent = eventItem.parent
-                    item.width = eventItem.width
-                    item.height = eventItem.height
-                    item.x = eventItem.x
-                    item.y = eventItem.y
-                    item.leftMargin = Qt.binding(() => dragAreaStart.width)
-                    item.rightMargin = Qt.binding(() => dragAreaEnd.width)
-                }
 
                 Connections {
                     target: dragAreaMiddle.item
 
-                    function onDragEnd() {
-                        var sel = root.selection.length > 0 ? root.selection : [eventItem]
-                        for(var item of sel)
-                            item.resetPos()
-                    }
-
                     function onXChanged() {
+                        // just before dragActive becomes false, X/Y position is already changed to 0!
+                        if(!dragAreaMiddle.item.dragActive) return
+
                         var sel = root.selection.length > 0 ? root.selection : [eventItem]
                         var dcMin = Math.max(...sel.map(item => -item.column))
                         var dcMax = Math.min(...sel.map(item => root.columns - item.column - item.columnSpan))
@@ -213,6 +183,9 @@ Item {
                     }
 
                     function onYChanged() {
+                        // just before dragActive becomes false, X/Y position is already changed to 0!
+                        if(!dragAreaMiddle.item.dragActive) return
+
                         var sel = root.selection.length > 0 ? root.selection : [eventItem]
                         var drMin = Math.max(...sel.map(item => -item.row))
                         var drMax = Math.min(...sel.map(item => root.rows - item.row - item.rowSpan))
@@ -234,13 +207,11 @@ Item {
                     }
                 }
 
-                onLoaded: resetPos()
-            }
-
-            function resetPos() {
-                dragAreaStart.resetPos()
-                dragAreaEnd.resetPos()
-                dragAreaMiddle.resetPos()
+                onLoaded: {
+                    item.theItem = eventItem
+                    item.leftMargin = Qt.binding(() => dragAreaStart.width)
+                    item.rightMargin = Qt.binding(() => dragAreaEnd.width)
+                }
             }
         }
     }
@@ -252,19 +223,39 @@ Item {
             id: eventDragArea
 
             Drag.active: eventDragAreaMouseArea.drag.active
-            Drag.onActiveChanged: if(Drag.active) dragStart(); else dragEnd()
-            onDragStart: root.activeDragMouseArea = eventDragAreaMouseArea
-            onDragEnd: root.activeDragMouseArea = null
+
+            Binding {
+                target: root
+                property: 'activeDragMouseArea'
+                value: eventDragAreaMouseArea
+                when: dragActive
+            }
 
             property int dragAxis: Drag.XAndYAxis
+            property alias dragActive: eventDragAreaMouseArea.drag.active
 
             property alias leftMargin: eventDragAreaMouseArea.anchors.leftMargin
             property alias rightMargin: eventDragAreaMouseArea.anchors.rightMargin
 
-            signal dragStart()
-            signal dragEnd()
             signal clicked()
             signal shiftClicked()
+
+            property Item theItem
+            property bool alignLeft
+            property bool alignRight
+
+            // following 4 to suppress the "Cannot read property 'xxx' of null" error
+            readonly property real theItemX: theItem?.x || 0
+            readonly property real theItemY: theItem?.y || 0
+            readonly property real theItemWidth: theItem?.width || 0
+            readonly property real theItemHeight: theItem?.height || 0
+
+            // when drag is active, de-parent the item:
+            x: dragActive ? theItemX : (alignRight ? theItemWidth - width : 0)
+            y: dragActive ? theItemY : 0
+            width: (alignLeft || alignRight) ? Math.min(20, theItemWidth / 3) : theItemWidth
+            height: theItemHeight
+            Binding on parent {when: dragActive; value: theItem.parent}
 
             MouseArea {
                 id: eventDragAreaMouseArea
